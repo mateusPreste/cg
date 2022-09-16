@@ -21,7 +21,6 @@ typedef struct quadrado
 double x_pos = -1.0;
 double y_pos = 9.0;
 double passos = 360*2;
-int pulseInterval = passos;
 double currentScale = 1;
 double aux;
 int cont = 0;
@@ -30,7 +29,7 @@ quadrado *q;
 
 quadrado *criaQuadrado ()
 {
-    quadrado *novo = (quadrado*) malloc(sizeof(quadrado));
+    quadrado *novo = (quadrado*)malloc(sizeof(quadrado));
     novo->p1.x = x_pos;
     novo->p1.y = y_pos;
     novo->p2.x = x_pos;
@@ -66,40 +65,29 @@ void desenhaQuadrado (quadrado* q1)
 
 double internalRotation = 0;
 
-double devRotation = 0;
-
-
-double currentDegree = 0.0;
-
 void display (void)
 {
-    cont = cont + 1;
     glClear(GL_COLOR_BUFFER_BIT);
     glColor3f(0.0f, 0.0f, 0.0f);
-
     glLoadIdentity();
 
     coordenada *c = calculaCentro(q);
 
-    devRotation += (360.0/(passos));
-    currentDegree = std::fmod(((360.0/((int)passos))*cont), 90);
+    //glTranslatef(c->x, c->y, 0);  // Move right and into the screen
 
-    double newScaleFactor = (abs((currentDegree/90.0)-0.5)+0.5)/currentScale;
-
-    std::cout << currentDegree << " " << newScaleFactor << std::endl;
+    //internalRotation += (360.0*4)/(passos);
+    //glRotatef ((GLfloat) -internalRotation, 0.0, 0.0, 1.0);
 
 
-    glRotatef((GLfloat) -devRotation, 0.0, 0.0, 1.0);
+    //glTranslatef(-c->x, -c->y, 0);  // Move right and into the screen
 
-    glTranslatef(c->x, c->y, 0);
-    internalRotation += (360.0*4)/(passos);
-    glRotatef ((GLfloat) -(internalRotation+devRotation), 0.0, 0.0, 1.0);
 
-    glScalef(newScaleFactor, newScaleFactor, newScaleFactor);
-    glTranslatef(-c->x, -c->y, 0);  // Move back to original position
     
+ 
+
     desenhaQuadrado(q);
 
+    
     glutSwapBuffers();
 }
 
@@ -136,7 +124,8 @@ void translacao_origem(double d1, double d2)
 
 void Multiply(double N[2][2], quadrado *q, double Result[2][4])
 {
-    double* M[2][4] = {{&(q->p1.x), &(q->p2.x), &(q->p3.x), &(q->p4.x)}, {&(q->p1.y), &(q->p2.y), &(q->p3.y), &(q->p4.y)}};
+    double* M[2][4] = {{&(q->p1.x), &(q->p2.x), &(q->p3.x), &(q->p4.x)},
+                        {&(q->p1.y), &(q->p2.y), &(q->p3.y), &(q->p4.y)}};
 
     for (int I = 0; I < 2; ++I)
     {
@@ -162,15 +151,18 @@ double degreeToRad(double degree){
     return (2.0*PI*degree*1.0)/360.0;
 }
 
+double currentDegree = 0.0;
+
 #include <stdlib.h> 
 #include <cmath>
 
 void timer(int value) {
-    
-    //currentDegree = std::fmod(((360.0/((int)passos))*cont), 90);
+    cont = cont + 1;
+    currentDegree = std::fmod(((360.0/((int)passos))*cont), 90);
     
     glutTimerFunc(1000/144, timer, 0);
     
+    coordenada *c = calculaCentro(q);
     
     //if(cont == 1){
     //    cont = 0;
@@ -185,14 +177,20 @@ void timer(int value) {
     //    translacao_origem(c->x, c->y);
     //}
     
-    //translacao_origem(-c->x, -c->y);
+    translacao_origem(-c->x, -c->y);
+
+    //Transformação para compensar a rotação em volta do eixo sobre o eixo do proprio quadrado
+    double T [2][2] = {{cos(degreeToRad(-(360.0/(passos)))), sin(degreeToRad(-(360.0/(passos))))}, {-sin(degreeToRad(-(360.0/(passos)))), cos(degreeToRad(-(360.0/(passos))))}};
+    double result [2][4] = {};
+//
+    Multiply(T, q, result);
 
 
     //Rotação em volta do proprio eixo
-    //double T0 [2][2] = {{cos(degreeToRad(((360.0*4)/(passos)))), -sin(degreeToRad(((360.0*4)/(passos))))}, {sin(degreeToRad(((360.0*4)/(passos)))), cos(degreeToRad(((360.0*4)/(passos))))}};
-    //double result0 [2][4] = {};
+    double T0 [2][2] = {{cos(degreeToRad(((360.0*4)/(passos)))), -sin(degreeToRad(((360.0*4)/(passos))))}, {sin(degreeToRad(((360.0*4)/(passos)))), cos(degreeToRad(((360.0*4)/(passos))))}};
+    double result0 [2][4] = {};
 //
-    //Multiply(T0, q, result0);
+    Multiply(T0, q, result0);
     
     //rotação em torno do proprio eixo
     //aux = q->p1.x;
@@ -209,16 +207,16 @@ void timer(int value) {
     //q->p4.y = (aux*(-0.5)+q->p4.y*0.866);
 
     // calcula os fatores da matriz de escala usando o angulo atual de inclinação do quadrado
-    //double newScaleFactor = (abs((currentDegree/90.0)-0.5)+0.5)/currentScale;
+    double newScaleFactor = (abs((currentDegree/90.0)-0.5)+0.5)/currentScale;
 
-    //currentScale *= newScaleFactor;
+    currentScale *= newScaleFactor;
 
-    //std::cout << currentScale << " " << currentDegree << std::endl;
+    std::cout << currentScale << " " << currentDegree << std::endl;
 
-    //double T1 [2][2] = {{newScaleFactor, 0},{0, newScaleFactor}};
-    //double result1 [2][4] = {};
+    double T1 [2][2] = {{newScaleFactor, 0},{0, newScaleFactor}};
+    double result1 [2][4] = {};
 
-    //Multiply(T1, q, result1);
+    Multiply(T1, q, result1);
 
     //q->p1.x = q->p1.x * escala;
     //q->p1.y = q->p1.y * escala;
@@ -228,13 +226,13 @@ void timer(int value) {
     //q->p3.y = q->p3.y * escala;
     //q->p4.x = q->p4.x * escala;
     //q->p4.y = q->p4.y * escala;
-    //translacao_origem(c->x, c->y);
+    translacao_origem(c->x, c->y);
     
-    //double T2 [2][2] = {{cos(degreeToRad(360.0/(passos))), sin(degreeToRad(360.0/(passos)))},
-                      //{-sin(degreeToRad(360.0/(passos))), cos(degreeToRad(360.0/(passos)))}};
-    //double result2 [2][4] = {};
+    double T2 [2][2] = {{cos(degreeToRad(360.0/(passos))), sin(degreeToRad(360.0/(passos)))},
+                      {-sin(degreeToRad(360.0/(passos))), cos(degreeToRad(360.0/(passos)))}};
+    double result2 [2][4] = {};
 
-    //Multiply(T2, q, result2);
+    Multiply(T2, q, result2);
 
 
     //rotacao em volta da origem
